@@ -12,6 +12,10 @@ BOT_USERNAME = "A-Vision"
 # The google-genai library automatically looks for the GOOGLE_API_KEY environment variable.
 # Make sure it is set in your .env file or in your Vercel project settings.
 
+VERCEL_URL = os.getenv("VERCEL_URL")
+if not VERCEL_URL:
+    raise ValueError("The VERCEL_URL environment variable was not found. This is set automatically by Vercel.")
+
 
 GEMINI_MODEL = "gemini-2.5-flash-preview-05-20"
 
