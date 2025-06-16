@@ -19,7 +19,7 @@ async def send_welcome(message: Message):
 @router.message(Command(commands=["stop"]))
 async def send_goodbye(message: Message):
     user_id = message.from_user.id
-    logger.info(f"Пользователь {user_id} остановил бота в чате {message.chat.id}")
+    logger.info(f"Пользователь - {user_id} остановил бота в чате {message.chat.id}")
     await message.answer(
         "Бот будет остановлен в этом чате. Чтобы запустить снова, используйте /start."
     )
