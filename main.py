@@ -1,14 +1,10 @@
-import asyncio
-import nest_asyncio
-
-nest_asyncio.apply()
 import logging
 import os
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
-from flask import Flask, request, abort
+from aiohttp import web
 
 from config import BOT_TOKEN
 from handlers.commands import router as commands_router
@@ -18,49 +14,43 @@ from handlers.media import router as media_router
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Get the persistent event loop
-loop = asyncio.get_event_loop()
-
 # Bot and Dispatcher setup
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
 dp.include_router(commands_router)
 dp.include_router(media_router)
 
-# Flask app setup
-app = Flask(__name__)
-
 # This is the webhook path that Telegram will send updates to.
 # It's important to use the bot token in the path to ensure it's secret.
 WEBHOOK_PATH = f'/{BOT_TOKEN}'
 
-@app.route(WEBHOOK_PATH, methods=['POST'])
-def webhook():
+async def webhook(request: web.Request):
     """
     This endpoint processes incoming updates from Telegram.
     """
     logger.info("Webhook received a request.")
-    if request.headers.get('content-type') == 'application/json':
-        json_string = request.get_data().decode('utf-8')
-        logger.info(f"Update from Telegram: {json_string}")
+    if request.content_type == 'application/json':
         try:
+            json_string = await request.text()
+            logger.info(f"Update from Telegram: {json_string}")
             update = types.Update.model_validate_json(json_string)
-            # Run the async task on the persistent event loop
-            loop = asyncio.get_event_loop()
-            task = loop.create_task(dp.feed_update(bot, update))
-            loop.run_until_complete(task)
+            await dp.feed_update(bot, update)
             logger.info("Update processed successfully by dispatcher.")
-            return '', 200
+            return web.Response(status=200)
         except Exception as e:
             logger.error(f"Error processing update: {e}", exc_info=True)
-            return '', 500
+            return web.Response(status=500)
     else:
-        logger.warning(f"Request aborted. Content-Type: {request.headers.get('content-type')}")
-        abort(403)
+        logger.warning(f"Request aborted. Content-Type: {request.content_type}")
+        return web.Response(status=403)
 
-@app.route('/')
-def index():
+async def index(request: web.Request):
     """
     A simple endpoint to confirm the app is running.
     """
-    return 'A-Vision is alive!'
+    return web.Response(text='A-Vision is alive!')
+
+# aiohttp app setup
+app = web.Application()
+app.router.add_post(WEBHOOK_PATH, webhook)
+app.router.add_get('/', index)
