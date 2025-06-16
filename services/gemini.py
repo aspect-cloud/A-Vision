@@ -1,17 +1,11 @@
 import asyncio
 import logging
 from typing import List
-import ssl
-
 import aiohttp
 from google import genai
 from google.genai import types
 
 from config import GEMINI_API_KEY, GEMINI_MODEL, MEDIA_PROMPT, VOICE_PROMPT, MAX_RETRIES
-
-ssl_context = ssl.create_default_context()
-ssl_context.check_hostname = False
-ssl_context.verify_mode = ssl.CERT_NONE
 
 class GeminiService:
     def __init__(self):
@@ -26,8 +20,7 @@ class GeminiService:
         ]
 
     async def _download_file(self, file_url: str) -> bytes:
-        connector = aiohttp.TCPConnector(ssl=ssl_context)
-        async with aiohttp.ClientSession(connector=connector) as session:
+        async with aiohttp.ClientSession() as session:
             try:
                 async with session.get(file_url) as response:
                     response.raise_for_status()
