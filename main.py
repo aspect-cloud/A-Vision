@@ -46,7 +46,9 @@ def webhook():
         try:
             update = types.Update.model_validate_json(json_string)
             # Run the async task on the persistent event loop
-            asyncio.get_event_loop().run_until_complete(dp.feed_update(bot, update))
+            loop = asyncio.get_event_loop()
+            task = loop.create_task(dp.feed_update(bot, update))
+            loop.run_until_complete(task)
             logger.info("Update processed successfully by dispatcher.")
             return '', 200
         except Exception as e:
