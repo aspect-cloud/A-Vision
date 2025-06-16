@@ -1,4 +1,7 @@
 import asyncio
+import nest_asyncio
+
+nest_asyncio.apply()
 import logging
 import os
 
@@ -33,13 +36,21 @@ def webhook():
     """
     This endpoint processes incoming updates from Telegram.
     """
+    logger.info("Webhook received a request.")
+    logger.debug(f"Request headers: {request.headers}")
     if request.headers.get('content-type') == 'application/json':
         json_string = request.get_data().decode('utf-8')
-        update = types.Update.model_validate_json(json_string)
-        asyncio.run(dp.feed_update(bot, update))
-        return '', 200
+        logger.info(f"Update from Telegram: {json_string}")
+        try:
+            update = types.Update.model_validate_json(json_string)
+            asyncio.run(dp.feed_update(bot, update))
+            logger.info("Update processed successfully by dispatcher.")
+            return '', 200
+        except Exception as e:
+            logger.error(f"Error processing update: {e}", exc_info=True)
+            return '', 500
     else:
-        # Block requests that are not from Telegram
+        logger.warning(f"Request aborted. Content-Type: {request.headers.get('content-type')}")
         abort(403)
 
 @app.route('/')
