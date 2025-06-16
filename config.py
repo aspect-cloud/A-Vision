@@ -9,9 +9,9 @@ if not BOT_TOKEN:
 
 BOT_USERNAME = "A-Vision"
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if not GEMINI_API_KEY:
-    raise ValueError("Не найдена переменная окружения GEMINI_API_KEY")
+# The google-genai library automatically looks for the GOOGLE_API_KEY environment variable.
+# Make sure it is set in your .env file or in your Vercel project settings.
+
 
 GEMINI_MODEL = "gemini-2.5-flash-preview-05-20"
 
