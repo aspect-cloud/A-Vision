@@ -1,27 +1,21 @@
 import asyncio
 import logging
-import sys
-from os import getenv
+import os
 
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, types
 from aiogram.enums import ParseMode
-from aiogram.types import Update
 from aiogram.client.default import DefaultBotProperties
-from flask import Flask, request, Response
+from flask import Flask, request, abort
 
-# Assuming your config and handlers are in the parent directory
-# Add the parent directory to the Python path
-sys.path.append('..')
-
-from config import BOT_TOKEN
+from config import BOT_TOKEN, BOT_USERNAME
 from handlers.commands import router as commands_router
 from handlers.media import router as media_router
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Bot setup
+# Bot and Dispatcher setup
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
 dp.include_router(commands_router)
@@ -30,51 +24,30 @@ dp.include_router(media_router)
 # Flask app setup
 app = Flask(__name__)
 
-# Webhook setup
-WEBHOOK_PATH = f"/webhook/{BOT_TOKEN}"
-VERCEL_URL = getenv('VERCEL_URL')
-WEBHOOK_URL = f"https://{VERCEL_URL}{WEBHOOK_PATH}" if VERCEL_URL else ''
+# Vercel environment variables
+VERCEL_URL = os.getenv('VERCEL_URL')
+WEBHOOK_PATH = f'/webhook/{BOT_TOKEN}'
+WEBHOOK_URL = f'https://{VERCEL_URL}{WEBHOOK_PATH}'
 
-@app.route(WEBHOOK_PATH, methods=["POST"])
+@app.route(WEBHOOK_PATH, methods=['POST'])
 def webhook():
-    async def process_update():
-        try:
-            update_data = request.json
-            update = Update.model_validate(update_data, context={"bot": bot})
-            await dp.feed_update(bot=bot, update=update)
-            return Response(status=200)
-        except Exception as e:
-            logger.error(f"Error in webhook: {e}")
-            return Response(status=500)
-    return asyncio.run(process_update())
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = types.Update.model_validate_json(json_string)
+        asyncio.run(dp.feed_update(bot, update))
+        return '', 200
+    else:
+        abort(403)
 
 @app.route('/')
 def index():
-    return "A-Vision is alive!"
+    return 'A-Vision is alive!'
 
-# A one-time function to set the webhook
-async def set_webhook():
-    if not VERCEL_URL:
-        logger.error('VERCEL_URL is not set. Cannot set webhook.')
-        return
+# Set webhook on startup
+async def on_startup():
+    logger.info(f'Setting webhook to {WEBHOOK_URL}')
     await bot.set_webhook(WEBHOOK_URL)
-    logger.info(f'Webhook set to {WEBHOOK_URL}')
 
-# Vercel will call this app
-# On the first deployment, you might need to manually call set_webhook
-# or browse to a temporary endpoint that calls it.
-
-# Example of a one-time setup endpoint (use with caution)
-@app.route('/set_webhook')
-def setup_webhook():
-    async def _setup():
-        await set_webhook()
-        return 'Webhook has been set.'
-    return asyncio.run(_setup())
-
-@app.route('/delete_webhook')
-def remove_webhook():
-    async def _remove():
-        await bot.delete_webhook()
-        return 'Webhook has been deleted.'
-    return asyncio.run(_remove())
+# Run on startup
+if os.getenv('VERCEL_ENV') == 'production':
+    asyncio.run(on_startup())
