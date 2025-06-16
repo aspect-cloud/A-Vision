@@ -1,0 +1,9 @@
+# Vercel
+.vercel
+
+# Python
+__pycache__/
+*.pyc
+.env
+venv/
+.idea/
