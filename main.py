@@ -18,6 +18,9 @@ from handlers.media import router as media_router
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Get the persistent event loop
+loop = asyncio.get_event_loop()
+
 # Bot and Dispatcher setup
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
@@ -37,13 +40,13 @@ def webhook():
     This endpoint processes incoming updates from Telegram.
     """
     logger.info("Webhook received a request.")
-    logger.debug(f"Request headers: {request.headers}")
     if request.headers.get('content-type') == 'application/json':
         json_string = request.get_data().decode('utf-8')
         logger.info(f"Update from Telegram: {json_string}")
         try:
             update = types.Update.model_validate_json(json_string)
-            asyncio.run(dp.feed_update(bot, update))
+            # Run the async task on the persistent event loop
+            asyncio.get_event_loop().run_until_complete(dp.feed_update(bot, update))
             logger.info("Update processed successfully by dispatcher.")
             return '', 200
         except Exception as e:
