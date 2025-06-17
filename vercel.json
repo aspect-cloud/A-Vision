@@ -6,7 +6,7 @@
       "use": "@vercel/python",
       "config": {
         "runtime": "python3.11",
-        "handler": "main:app"
+        "handler": "main:handler"
       }
     }
   ],
