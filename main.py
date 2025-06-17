@@ -75,7 +75,3 @@ application = app
 # Start the application
 if __name__ == '__main__':
     web.run_app(app)
-
-# Start the application
-if __name__ == '__main__':
-    web.run_app(app)
