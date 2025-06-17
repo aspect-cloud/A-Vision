@@ -48,10 +48,17 @@ webhook_requests_handler = SimpleRequestHandler(
 webhook_requests_handler.register(app, path=f'/{BOT_TOKEN}')
 
 # Mount the dispatcher to the application to handle startup and shutdown
-setup_application(app, dp, bot=bot)
+setup_application(app, dp)
 
 # Add a simple root handler for health checks
 async def home(request: web.Request):
     return web.Response(text="A-Vision Bot is running!")
 
 app.router.add_get('/', home)
+
+# Expose the application for Vercel
+application = app
+
+# Start the application
+if __name__ == '__main__':
+    web.run_app(app)
