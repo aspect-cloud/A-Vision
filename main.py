@@ -1,10 +1,13 @@
 import logging
+import os
+from typing import Optional
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
+from aiohttp.web import Request, Response
 
 from config import BOT_TOKEN, VERCEL_URL
 from handlers.commands import router as commands_router
@@ -50,14 +53,28 @@ webhook_requests_handler.register(app, path=f'/{BOT_TOKEN}')
 # Mount the dispatcher to the application to handle startup and shutdown
 setup_application(app, dp)
 
-# Add a simple root handler for health checks
-async def home(request: web.Request):
-    return web.Response(text="A-Vision Bot is running!")
+# Add handlers for GET requests
+async def handle_get(request: Request) -> Response:
+    """Handle GET requests to the root and favicon."""
+    path = request.path
+    
+    if path == '/':
+        return web.Response(text="A-Vision Bot is running!", content_type="text/plain")
+    elif path == '/favicon.ico':
+        return web.Response(status=204)  # No Content
+    else:
+        return web.Response(status=404, text="Not Found")
 
-app.router.add_get('/', home)
+# Add routes for GET requests
+app.router.add_get('/', handle_get)
+app.router.add_get('/favicon.ico', handle_get)
 
 # Expose the application for Vercel
 application = app
+
+# Start the application
+if __name__ == '__main__':
+    web.run_app(app)
 
 # Start the application
 if __name__ == '__main__':
