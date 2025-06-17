@@ -1,3 +1,5 @@
+# handlers/commands.py
+
 import logging
 from aiogram import Router, types, F, Bot
 from aiogram.filters import Command
@@ -65,8 +67,8 @@ async def cmd_help(message: types.Message):
 async def on_bot_promote(event: ChatMemberUpdated, bot: Bot):
     logger.info(
         f"Статус бота изменен в чате {event.chat.id}. "
-        f"Старый статус: {event.old_chat_member.status.value}, "
-        f"Новый статус: {event.new_chat_member.status.value}"
+        f"Старый статус: {event.old_chat_member.status}, "
+        f"Новый статус: {event.new_chat_member.status}"
     )
     if event.new_chat_member.status == ChatMemberStatus.ADMINISTRATOR and event.new_chat_member.user.id == bot.id:
         try:

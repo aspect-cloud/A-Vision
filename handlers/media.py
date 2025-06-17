@@ -1,3 +1,5 @@
+# handlers/media.py
+
 import asyncio
 import logging
 from typing import List
@@ -14,7 +16,7 @@ TELEGRAM_MAX_MESSAGE_LENGTH = 4096
 
 async def send_long_message(message: Message, text: str):
     if len(text) <= TELEGRAM_MAX_MESSAGE_LENGTH:
-        await message.reply(text)
+        await message.answer(text)
         return
 
     parts = []
@@ -33,7 +35,7 @@ async def send_long_message(message: Message, text: str):
             break
     
     for part in parts:
-        await message.reply(part)
+        await message.answer(part)
         await asyncio.sleep(0.5)
 
 async def get_file_url(bot, file_id: str) -> str:
@@ -51,14 +53,14 @@ async def process_description(message: Message, files: List[dict]):
         description = await gemini_service.describe_media(files)
 
         if not description:
-            await message.reply("Не удалось получить описание для этого медиафайла.")
+            await message.answer("Не удалось получить описание для этого медиафайла.")
             return
 
         await send_long_message(message, RESPONSE_TEMPLATE.format(description))
 
     except Exception as e:
         logger.error(f"Error generating description: {str(e)}", exc_info=True)
-        await message.reply("Извините, произошла ошибка при обработке вашего запроса.")
+        await message.answer("Извините, произошла ошибка при обработке вашего запроса.")
 
 @router.message(F.photo | F.video | F.voice)
 async def handle_any_media(message: Message):
@@ -81,4 +83,4 @@ async def handle_any_media(message: Message):
 async def handle_unsupported_files(message: Message):
     if message.chat.id in inactive_chats:
         return
-    await message.reply(SUPPORTED_MEDIA_MESSAGE)
+    await message.answer(SUPPORTED_MEDIA_MESSAGE)
