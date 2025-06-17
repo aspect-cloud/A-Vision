@@ -68,4 +68,4 @@ app.router.add_get('/favicon.ico', handle_get)
 app.router.add_get('/favicon.png', handle_get)
 
 # Expose the application for Vercel
-application = app
+app = app
