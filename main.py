@@ -2,6 +2,7 @@
 
 import os
 import logging
+import asyncio
 from flask import Flask, request, jsonify
 from aiogram import Bot, Dispatcher, types
 from aiogram.enums import ParseMode
@@ -12,34 +13,37 @@ from config import BOT_TOKEN
 
 logging.basicConfig(level=logging.INFO)
 
-# Инициализируем Flask, Aiogram Bot и Dispatcher
 app = Flask(__name__)
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
-
-# Регистрируем роутеры из твоих файлов
 dp.include_router(commands.router)
 dp.include_router(media.router)
 
-# Путь для вебхука
 WEBHOOK_PATH = f"/webhook"
 
-# Этот роут будет отвечать на GET запросы, чтобы Vercel не падал с ошибкой 500
+# Этот роут для проверки "здоровья"
 @app.route("/")
 def index():
     return "Bot is running!"
 
-# Главный роут для приема апдейтов от Telegram
+# Главный роут для вебхука
 @app.route(WEBHOOK_PATH, methods=["POST"])
-async def webhook():
-    json_update = await request.get_json()
-    update = types.Update(**json_update)
-    await dp.feed_update(bot=bot, update=update)
-    return jsonify(ok=True)
+def webhook():
+    # Эта функция синхронная, как любит Flask
+    try:
+        # Получаем данные из запроса
+        update_data = request.get_json()
+        
+        # Создаем и запускаем асинхронную задачу для aiogram
+        # Это самый надежный способ подружить Flask и asyncio
+        asyncio.run(process_update(update_data))
+        
+        return jsonify(ok=True)
+    except Exception as e:
+        logging.error(f"Error in webhook: {e}")
+        return jsonify(ok=False, error=str(e)), 500
 
-# Этот блок нужен для локального запуска, на Vercel он не выполняется,
-# но позволяет один раз установить вебхук, если запустить локально.
-if __name__ == "__main__":
-    # ВАЖНО: Вебхук нужно будет установить вручную через браузер!
-    # Этот код здесь для справки.
-    pass
+async def process_update(data):
+    """Асинхронная функция, которая делает всю работу с aiogram."""
+    update = types.Update(**data)
+    await dp.feed_update(bot=bot, update=update)
