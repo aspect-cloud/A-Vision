@@ -11,7 +11,7 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler
 
 # Configure logging first
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("A-Vision")
 
 try:
     from config import BOT_TOKEN, VERCEL_URL
@@ -22,10 +22,6 @@ except Exception as e:
 
 from handlers.commands import router as commands_router
 from handlers.media import router as media_router
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 # --- Bot and Dispatcher Setup ---
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
@@ -44,6 +40,9 @@ webhook_requests_handler = SimpleRequestHandler(
 # Register the webhook handler to listen on the bot token path
 webhook_path = f'/webhook/{BOT_TOKEN}'
 webhook_requests_handler.register(app, path=webhook_path)
+
+# Add static file handling for favicon
+app.router.add_static('/static/', path=os.path.join(os.path.dirname(__file__), 'static'))
 
 # Add handlers for GET requests
 async def on_startup():
@@ -68,19 +67,12 @@ dp.shutdown.register(on_shutdown)
 
 # Add handlers for GET requests
 async def handle_get(request: Request) -> Response:
-    """Handle GET requests to the root and favicon."""
+    """Handle GET requests to the root."""
     try:
         path = request.path
         
         if path == '/':
             return web.Response(text="A-Vision Bot is running!", content_type="text/plain")
-        elif path == '/favicon.ico' or path == '/favicon.png':
-            # Return empty favicon response
-            return web.Response(
-                status=200,
-                content_type="image/x-icon",
-                body=b''
-            )
         else:
             return web.Response(status=404, text="Not Found")
     except Exception as e:
