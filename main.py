@@ -3,11 +3,12 @@ import os
 from typing import Optional
 from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse, Response
+from fastapi.middleware.cors import CORSMiddleware
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.webhook.fastapi import SimpleRequestHandler
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler
 
 from config import BOT_TOKEN, VERCEL_URL
 from handlers.commands import router as commands_router
@@ -24,6 +25,15 @@ dp.include_routers(commands_router, media_router)
 
 # --- Web App Setup (using FastAPI) ---
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Create a request handler for the bot
 webhook_requests_handler = SimpleRequestHandler(
@@ -56,6 +66,15 @@ async def root():
 @app.get("/favicon.png")
 async def favicon():
     return Response(status_code=204)
+
+# Add a POST handler for the webhook
+@app.post(f"/{BOT_TOKEN}")
+async def webhook_post(request: Request):
+    """Handle POST requests to the webhook."""
+    body = await request.body()
+    update = await request.json()
+    await dp.feed_webhook_update(bot, update)
+    return Response(status_code=200)
 
 # Expose the application for Vercel
 application = app
