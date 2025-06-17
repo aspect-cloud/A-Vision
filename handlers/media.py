@@ -5,6 +5,7 @@ from aiogram import F, Router
 from aiogram.types import Message
 from config import RESPONSE_TEMPLATE, SUPPORTED_MEDIA_MESSAGE
 from services.gemini import gemini_service
+from handlers.commands import inactive_chats
 
 router = Router()
 logger = logging.getLogger(__name__)
@@ -61,6 +62,9 @@ async def process_description(message: Message, files: List[dict]):
 
 @router.message(F.photo | F.video | F.voice)
 async def handle_any_media(message: Message):
+    if message.chat.id in inactive_chats:
+        return
+        
     file_type, file_id = None, None
     if message.photo:
         file_type, file_id = 'photo', max(message.photo, key=lambda p: p.file_size).file_id
@@ -75,4 +79,6 @@ async def handle_any_media(message: Message):
 
 @router.message(F.audio | F.document)
 async def handle_unsupported_files(message: Message):
+    if message.chat.id in inactive_chats:
+        return
     await message.reply(SUPPORTED_MEDIA_MESSAGE)

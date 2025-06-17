@@ -9,7 +9,7 @@ if not BOT_TOKEN:
 
 BOT_USERNAME = "A-Vision"
 
-GEMINI_MODEL = "gemini-1.5-flash"
+GEMINI_MODEL = "gemini-2.5-flash"
 MAX_RETRIES = int(os.getenv('MAX_RETRIES', 3))
 
 GROUP_WELCOME_MESSAGE = "Теперь я могу описывать медиа здесь! Чтобы использовать меня, просто отправь медиа в этот чат."
