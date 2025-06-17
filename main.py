@@ -34,6 +34,18 @@ webhook_requests_handler = SimpleRequestHandler(
 # Register the webhook handler to listen on the bot token path
 webhook_requests_handler.register(app, path=f'/{BOT_TOKEN}')
 
+# Add handlers for GET requests
+async def on_startup():
+    """Sets the webhook on application startup."""
+    webhook_url = f"https://{VERCEL_URL}/{BOT_TOKEN}"
+    await bot.set_webhook(webhook_url, drop_pending_updates=True)
+    logger.info(f"Webhook set to {webhook_url}")
+
+async def on_shutdown():
+    """Deletes the webhook on application shutdown."""
+    await bot.delete_webhook()
+    logger.info("Webhook deleted")
+
 # Register startup and shutdown handlers
 dp.startup.register(on_startup)
 dp.shutdown.register(on_shutdown)
@@ -57,14 +69,3 @@ app.router.add_get('/favicon.png', handle_get)
 
 # Expose the application for Vercel
 application = app
-
-async def on_startup():
-    """Sets the webhook on application startup."""
-    webhook_url = f"https://{VERCEL_URL}/{BOT_TOKEN}"
-    await bot.set_webhook(webhook_url, drop_pending_updates=True)
-    logger.info(f"Webhook set to {webhook_url}")
-
-async def on_shutdown():
-    """Deletes the webhook on application shutdown."""
-    await bot.delete_webhook()
-    logger.info("Webhook deleted")
