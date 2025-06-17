@@ -9,6 +9,10 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler
 
+# Configure logging first
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 try:
     from config import BOT_TOKEN, VERCEL_URL
     logger.info(f"Config loaded: BOT_TOKEN={bool(BOT_TOKEN)}, VERCEL_URL={VERCEL_URL}")
