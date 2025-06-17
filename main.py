@@ -12,35 +12,37 @@ from handlers import commands, media
 from config import BOT_TOKEN
 
 logging.basicConfig(level=logging.INFO)
-
 app = Flask(__name__)
-bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-dp = Dispatcher()
-dp.include_router(commands.router)
-dp.include_router(media.router)
-
-WEBHOOK_PATH = f"/webhook"
 
 @app.route("/")
 def index():
     return "Bot is running!"
 
-@app.route(WEBHOOK_PATH, methods=["POST"])
-def webhook():
-    update_data = request.get_json()
-    
+@app.route("/webhook", methods=["POST"])
+def webhook_handler():
+    """Синхронный обработчик, который запускает асинхронную логику."""
     try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-    # КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Создаем официальную задачу (Task)
-    task = loop.create_task(process_update(update_data))
-    loop.run_until_complete(task)
-    
-    return jsonify(ok=True)
+        asyncio.run(process_webhook(request.get_json()))
+        return jsonify(ok=True)
+    except Exception as e:
+        logging.error(f"Error processing webhook: {e}")
+        return jsonify(ok=False, error=str(e)), 500
 
-async def process_update(data):
-    update = types.Update(**data)
+async def process_webhook(update_data: dict):
+    """
+    Асинхронная функция, которая создает все объекты с нуля
+    для каждого запроса, обеспечивая полную изоляцию.
+    """
+    bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    dp = Dispatcher()
+
+    # Роутеры регистрируются здесь же
+    dp.include_router(commands.router)
+    dp.include_router(media.router)
+
+    # Обработка апдейта
+    update = types.Update(**update_data)
     await dp.feed_update(bot=bot, update=update)
+
+    # ВАЖНО: Закрываем сессию бота после обработки, чтобы не было утечек
+    await bot.session.close()
