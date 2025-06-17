@@ -1,10 +1,13 @@
+# handlers/commands.py
+
 import logging
-from aiogram import Router, types, F, Bot
+from aiogram import Router, types, F, Bot  
 from aiogram.filters import Command
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ChatMemberUpdated
 from aiogram.enums import ChatMemberStatus, ParseMode
 from config import BOT_USERNAME, GROUP_WELCOME_MESSAGE
-from utils.logger import logger
+
+logger = logging.getLogger(__name__)
 
 router = Router()
 
@@ -51,7 +54,7 @@ async def cmd_help(message: types.Message):
         "",
         "**Команды:**",
         "/start - Показать приветствие и клавиатуру.",
-        "/stop - Скрыть клавиатуру и перестать отвечать.",
+        "/stop - Скрыть клавиатуру.",
         "/help - Показать это сообщение.",
         "",
         "Для работы в группе, добавьте меня и дайте права администратора.",
@@ -63,7 +66,7 @@ async def cmd_help(message: types.Message):
     logger.info(f"Помощь запрошена в чате {message.chat.id} пользователем {message.from_user.id}")
 
 @router.my_chat_member()
-async def on_bot_promote(event: ChatMemberUpdated, bot: types.Bot):
+async def on_bot_promote(event: ChatMemberUpdated, bot: Bot):  
     logger.info(
         f"Статус бота изменен в чате {event.chat.id}. "
         f"Старый статус: {event.old_chat_member.status.value}, "
