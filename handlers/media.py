@@ -8,6 +8,7 @@ from aiogram.types import Message
 
 from config import RESPONSE_TEMPLATE, SUPPORTED_MEDIA_MESSAGE
 from services.gemini import gemini_service
+from handlers import is_chat_active
 
 router = Router()
 logger = logging.getLogger(__name__)
@@ -76,6 +77,14 @@ async def process_description(message: Message, files: List[dict]):
         )
 
 async def process_media_group_wrapper(group_id: str, chat_id: int, user_id: int, bot):
+    if not is_chat_active(chat_id):
+        logger.info(f"Бот неактивен в чате {chat_id}, игнорируем обработку медиа-группы")
+        if group_id in media_groups:
+            media_groups.pop(group_id)
+        if group_id in media_group_timers:
+            media_group_timers.pop(group_id)
+        return
+
     if group_id in media_groups:
         messages_to_process = media_groups.pop(group_id)
         messages_to_process.sort(key=lambda m: m.message_id)
@@ -104,6 +113,11 @@ async def process_media_group_wrapper(group_id: str, chat_id: int, user_id: int,
 @router.message(F.media_group_id)
 async def handle_media_group(message: Message):
     user_id = message.from_user.id
+    chat_id = message.chat.id
+
+    if not is_chat_active(chat_id):
+        logger.info(f"Бот неактивен в чате {chat_id}, игнорируем медиа-группу")
+        return
 
     group_id = str(message.media_group_id)
     media_groups[group_id].append(message)
@@ -122,6 +136,11 @@ async def handle_single_media(message: Message):
         return
 
     user_id = message.from_user.id
+    chat_id = message.chat.id
+
+    if not is_chat_active(chat_id):
+        logger.info(f"Бот неактивен в чате {chat_id}, игнорируем медиа-сообщение")
+        return
 
     file_type, file_id = None, None
     if message.photo:

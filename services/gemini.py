@@ -6,19 +6,16 @@ import aiohttp
 from google import genai
 from google.genai import types
 
-# Импортируем конфиг из корня
 from config import GEMINI_MODEL, MEDIA_PROMPT, VOICE_PROMPT, MAX_RETRIES
 
 logger = logging.getLogger(__name__)
 
 class GeminiService:
     def __init__(self):
-        # 1. Используем новый клиент. Он сам найдет ключ в переменной окружения GOOGLE_API_KEY.
         self.client = genai.Client()
         self.retry_delay = 1
 
     async def _download_file(self, file_url: str) -> bytes:
-        """Downloads a file from a URL."""
         async with aiohttp.ClientSession() as session:
             try:
                 async with session.get(file_url) as response:
@@ -29,7 +26,6 @@ class GeminiService:
                 raise
 
     async def describe_media(self, files: List[dict]) -> str:
-        """Generates a description for a list of media files using the new Gen AI SDK."""
         for attempt in range(MAX_RETRIES):
             try:
                 file_type = files[0]['type'] if files else None
@@ -54,7 +50,6 @@ class GeminiService:
 
                 contents = [prompt] + media_parts
 
-                # 3. Все настройки теперь в объекте config
                 config = types.GenerateContentConfig(
                     temperature=0.7,
                     top_p=0.8,
@@ -67,7 +62,6 @@ class GeminiService:
                     ]
                 )
 
-                # 2. Вызов асинхронного метода через client.aio
                 response = await self.client.aio.models.generate_content(
                     model=GEMINI_MODEL,
                     contents=contents,

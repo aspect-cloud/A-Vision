@@ -20,6 +20,23 @@ dp.include_router(media.router)
 # Создаем Flask приложение
 app = Flask(__name__)
 
+# Функция для настройки команд бота при запуске
+async def setup_bot():
+    bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    try:
+        await commands.setup_bot_commands(bot)
+        print("✅ Команды бота успешно настроены")
+    except Exception as e:
+        print(f"❌ Ошибка настройки команд бота: {e}")
+    finally:
+        await bot.session.close()
+
+# Настраиваем команды при запуске приложения
+@app.before_first_request
+def before_first_request():
+    import asyncio
+    asyncio.run(setup_bot())
+
 # --- Логика Вебхука ---
 @app.route(f'/{BOT_TOKEN}', methods=['POST'])
 async def process_webhook():
