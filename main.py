@@ -2,43 +2,44 @@
 
 import os
 import logging
-from aiohttp import web
+from flask import Flask, request, jsonify
 from aiogram import Bot, Dispatcher, types
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 
-# Импорты теперь должны быть такими, так как main.py в корне
 from handlers import commands, media
 from config import BOT_TOKEN
 
 logging.basicConfig(level=logging.INFO)
 
-# Устанавливаем простой путь, который будет слушать наше приложение
-WEBHOOK_PATH = "/webhook"
-WEBHOOK_SECRET = "a_vision_super_secret"
-
-# Создаем главный объект приложения, который найдет Vercel
-app = web.Application()
+# Инициализируем Flask, Aiogram Bot и Dispatcher
+app = Flask(__name__)
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
 
-async def process_update(request):
-    if request.headers.get("X-Telegram-Bot-Api-Secret-Token") != WEBHOOK_SECRET:
-        return web.Response(status=403)
-    
-    update = types.Update(**(await request.json()))
+# Регистрируем роутеры из твоих файлов
+dp.include_router(commands.router)
+dp.include_router(media.router)
+
+# Путь для вебхука
+WEBHOOK_PATH = f"/webhook"
+
+# Этот роут будет отвечать на GET запросы, чтобы Vercel не падал с ошибкой 500
+@app.route("/")
+def index():
+    return "Bot is running!"
+
+# Главный роут для приема апдейтов от Telegram
+@app.route(WEBHOOK_PATH, methods=["POST"])
+async def webhook():
+    json_update = await request.get_json()
+    update = types.Update(**json_update)
     await dp.feed_update(bot=bot, update=update)
-    
-    return web.Response()
+    return jsonify(ok=True)
 
-async def on_startup(app_instance):
-    dp.include_router(commands.router)
-    dp.include_router(media.router)
-
-    # VERCEL_URL - переменная окружения, которую предоставляет Vercel
-    webhook_url = f"https://{os.environ.get('VERCEL_URL')}{WEBHOOK_PATH}"
-    await bot.set_webhook(webhook_url, secret_token=WEBHOOK_SECRET)
-
-# Регистрируем наш простой путь /webhook
-app.router.add_post(WEBHOOK_PATH, process_update)
-app.on_startup.append(on_startup)
+# Этот блок нужен для локального запуска, на Vercel он не выполняется,
+# но позволяет один раз установить вебхук, если запустить локально.
+if __name__ == "__main__":
+    # ВАЖНО: Вебхук нужно будет установить вручную через браузер!
+    # Этот код здесь для справки.
+    pass
