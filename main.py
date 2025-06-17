@@ -21,29 +21,26 @@ dp.include_router(media.router)
 
 WEBHOOK_PATH = f"/webhook"
 
-# Этот роут для проверки "здоровья"
 @app.route("/")
 def index():
     return "Bot is running!"
 
-# Главный роут для вебхука
 @app.route(WEBHOOK_PATH, methods=["POST"])
 def webhook():
-    # Эта функция синхронная, как любит Flask
+    update_data = request.get_json()
+    
+    # Более надежный способ управления циклом событий
     try:
-        # Получаем данные из запроса
-        update_data = request.get_json()
-        
-        # Создаем и запускаем асинхронную задачу для aiogram
-        # Это самый надежный способ подружить Flask и asyncio
-        asyncio.run(process_update(update_data))
-        
-        return jsonify(ok=True)
-    except Exception as e:
-        logging.error(f"Error in webhook: {e}")
-        return jsonify(ok=False, error=str(e)), 500
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    # Запускаем нашу асинхронную задачу в существующем или новом цикле
+    loop.run_until_complete(process_update(update_data))
+    
+    return jsonify(ok=True)
 
 async def process_update(data):
-    """Асинхронная функция, которая делает всю работу с aiogram."""
     update = types.Update(**data)
     await dp.feed_update(bot=bot, update=update)
