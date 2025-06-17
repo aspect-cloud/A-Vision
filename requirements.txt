@@ -2,4 +2,4 @@ aiogram>=3.5.0
 python-dotenv>=1.0.0
 Flask[async]>=3.0.0
 google-genai
-aiohttp==3.9.1 # <-- ВОТ ОНО, РЕШЕНИЕ
+aiohttp
