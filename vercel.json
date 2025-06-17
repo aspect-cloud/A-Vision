@@ -5,8 +5,7 @@
       "src": "main.py",
       "use": "@vercel/python",
       "config": {
-        "runtime": "python3.11",
-        "handler": "main:handler"
+        "runtime": "python3.11"
       }
     }
   ],

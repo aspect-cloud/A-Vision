@@ -84,10 +84,6 @@ app.router.add_get('/', handle_get)
 app.router.add_get('/favicon.ico', handle_get)
 app.router.add_get('/favicon.png', handle_get)
 
-# Expose the application for Vercel
-def create_app():
-    return app
-
 # This is the entry point for Vercel
 def handler(event, context):
-    return create_app()
+    return app
