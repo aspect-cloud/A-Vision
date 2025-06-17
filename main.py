@@ -19,7 +19,7 @@ dp.include_router(media.router)
 
 app = Flask(__name__)
 
-@app.route(f'/{BOT_TOKEN}', methods=['POST'])
+@app.route('/webhook', methods=['POST'])
 async def process_webhook():
     bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     try:
@@ -37,7 +37,6 @@ def index():
     return 'A-Vision Bot is running!', 200
 
 async def set_bot_commands():
-    """Устанавливает команды для бота в Telegram."""
     bot = Bot(token=BOT_TOKEN)
     bot_commands = [
         BotCommand(command="start", description="🚀 Запустить бота"),
@@ -46,9 +45,6 @@ async def set_bot_commands():
     ]
     try:
         await bot.set_my_commands(bot_commands)
-        print("✅ Команды бота успешно установлены.")
-    except Exception as e:
-        print(f"❌ Ошибка установки команд: {e}")
     finally:
         await bot.session.close()
 
@@ -59,4 +55,4 @@ if os.environ.get('VERCEL'):
         loop.run_until_complete(set_bot_commands())
         loop.close()
     except Exception as e:
-        print(f"Произошла ошибка при запуске асинхронной задачи установки команд: {e}") 
+        print(f"An error occurred during command setup: {e}")
