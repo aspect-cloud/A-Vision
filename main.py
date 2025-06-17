@@ -1,106 +1,64 @@
-import logging
+import asyncio
 import os
-from http.server import BaseHTTPRequestHandler
-from urllib.parse import urlparse
-from typing import Optional
-from aiogram import Bot, Dispatcher
+from flask import Flask, request, jsonify
+from aiogram import Bot, Dispatcher, types
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.utils.executor import start_webhook
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("A-Vision")
-
+# --- Конфигурация ---
+# Импортируем конфиг и хендлеры
+# Убедись, что config.py теперь лежит в корне проекта!
 try:
-    from config import BOT_TOKEN, VERCEL_URL
-    logger.info(f"Config loaded: BOT_TOKEN={bool(BOT_TOKEN)}, VERCEL_URL={VERCEL_URL}")
-except Exception as e:
-    logger.error(f"Failed to load config: {str(e)}", exc_info=True)
-    raise
+    from config import BOT_TOKEN
+    from handlers import commands, media
+except ImportError as e:
+    # Эта ошибка поможет при отладке, если структура папок неверна
+    raise ImportError(f"Не удалось импортировать модули. Проверь структуру проекта. Ошибка: {e}")
 
-from handlers.commands import router as commands_router
-from handlers.media import router as media_router
+# --- Инициализация ---
+# Создаем Flask-приложение, которое ищет Vercel
+app = Flask(__name__)
 
-# Bot and Dispatcher Setup
+# Инициализация бота и диспетчера Aiogram
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
-dp.include_routers(commands_router, media_router)
 
-# Webhook Setup
-webhook_path = f'/webhook/{BOT_TOKEN}'
-webhook_url = f"https://{VERCEL_URL}{webhook_path}"
+# Подключаем роутеры из папки handlers
+dp.include_router(commands.router)
+dp.include_router(media.router)
 
-# Set webhook on startup
-async def on_startup():
-    try:
-        await bot.set_webhook(webhook_url, drop_pending_updates=True)
-        logger.info(f"Webhook set successfully to {webhook_url}")
-    except Exception as e:
-        logger.error(f"Failed to set webhook: {str(e)}", exc_info=True)
-        raise
+# Секретный путь для вебхука, чтобы его не нашли случайные люди
+WEBHOOK_PATH = f'/{BOT_TOKEN}'
 
-async def on_shutdown():
-    await bot.delete_webhook()
-    logger.info("Webhook deleted")
-
-# Register startup and shutdown handlers
-dp.startup.register(on_startup)
-dp.shutdown.register(on_shutdown)
-
-class RequestHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        """Handle GET requests."""
+# --- Логика Вебхука ---
+# Этот роут будет принимать обновления от Telegram
+@app.route(WEBHOOK_PATH, methods=['POST'])
+async def process_webhook():
+    if request.method == 'POST':
         try:
-            parsed_path = urlparse(self.path)
-            if parsed_path.path == '/':
-                self.send_response(200)
-                self.send_header('Content-type', 'text/plain')
-                self.end_headers()
-                self.wfile.write(b"A-Vision Bot is running!")
-            else:
-                self.send_response(404)
-                self.send_header('Content-type', 'text/plain')
-                self.end_headers()
-                self.wfile.write(b"Not Found")
+            # Получаем обновление от Telegram
+            update_data = request.json
+            update = types.Update(**update_data)
+            
+            # Передаем обновление в диспетчер Aiogram для обработки
+            await dp.feed_update(bot=bot, update=update)
+            
+            return jsonify({'ok': True}), 200
         except Exception as e:
-            logger.error(f"Error handling GET request {self.path}: {str(e)}", exc_info=True)
-            self.send_response(500)
-            self.send_header('Content-type', 'text/plain')
-            self.end_headers()
-            self.wfile.write(b"Internal Server Error")
+            # Логируем ошибку, если что-то пошло не так
+            app.logger.error(f"Error processing update: {e}")
+            return jsonify({'ok': False, 'error': str(e)}), 500
+    else:
+        return 'Method Not Allowed', 405
 
-    def do_POST(self):
-        """Handle POST requests for webhook."""
-        try:
-            if self.path == webhook_path:
-                content_length = int(self.headers['Content-Length'])
-                post_data = self.rfile.read(content_length)
-                dp.feed_webhook_update(bot, post_data)
-                self.send_response(200)
-                self.end_headers()
-            else:
-                self.send_response(404)
-                self.end_headers()
-        except Exception as e:
-            logger.error(f"Error handling POST request {self.path}: {str(e)}", exc_info=True)
-            self.send_response(500)
-            self.end_headers()
+# Этот роут нужен для проверки, что бот жив
+@app.route('/')
+def index():
+    return 'A-Vision Bot is running!', 200
 
-def handler(event, context):
-    """Vercel handler."""
-    # Create a new instance of the handler for each request
-    handler = RequestHandler()
-    handler.setup(event, context)
-    return handler
-
-if __name__ == "__main__":
-    start_webhook(
-        dispatcher=dp,
-        webhook_path=webhook_path,
-        on_startup=on_startup,
-        on_shutdown=on_shutdown,
-        skip_updates=True,
-        host="0.0.0.0",
-        port=8080,
-    )
+# Важно! Код ниже НЕ нужен для Vercel. 
+# Webhook устанавливается ОДИН РАЗ вручную.
+# async def on_startup(bot: Bot):
+#     await bot.set_webhook(f"https://{VERCEL_URL}{WEBHOOK_PATH}")
+#
+# dp.startup.register(on_startup)
