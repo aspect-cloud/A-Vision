@@ -9,14 +9,11 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler
 
-print("BOT_TOKEN:", os.getenv("BOT_TOKEN"))
-print("VERCEL_URL:", os.getenv("VERCEL_URL"))
-
 try:
     from config import BOT_TOKEN, VERCEL_URL
+    logger.info(f"Config loaded: BOT_TOKEN={bool(BOT_TOKEN)}, VERCEL_URL={VERCEL_URL}")
 except Exception as e:
-    import sys
-    print("CONFIG IMPORT ERROR:", e, file=sys.stderr)
+    logger.error(f"Failed to load config: {str(e)}", exc_info=True)
     raise
 
 from handlers.commands import router as commands_router
@@ -41,14 +38,20 @@ webhook_requests_handler = SimpleRequestHandler(
 )
 
 # Register the webhook handler to listen on the bot token path
-webhook_requests_handler.register(app, path=f'/{BOT_TOKEN}')
+webhook_path = f'/webhook/{BOT_TOKEN}'
+webhook_requests_handler.register(app, path=webhook_path)
 
 # Add handlers for GET requests
 async def on_startup():
     """Sets the webhook on application startup."""
-    webhook_url = f"https://{VERCEL_URL}/{BOT_TOKEN}"
-    await bot.set_webhook(webhook_url, drop_pending_updates=True)
-    logger.info(f"Webhook set to {webhook_url}")
+    webhook_path = f'/webhook/{BOT_TOKEN}'
+    webhook_url = f"https://{VERCEL_URL}{webhook_path}"
+    try:
+        await bot.set_webhook(webhook_url, drop_pending_updates=True)
+        logger.info(f"Webhook set successfully to {webhook_url}")
+    except Exception as e:
+        logger.error(f"Failed to set webhook: {str(e)}", exc_info=True)
+        raise
 
 async def on_shutdown():
     """Deletes the webhook on application shutdown."""
@@ -62,14 +65,18 @@ dp.shutdown.register(on_shutdown)
 # Add handlers for GET requests
 async def handle_get(request: Request) -> Response:
     """Handle GET requests to the root and favicon."""
-    path = request.path
-    
-    if path == '/':
-        return web.Response(text="A-Vision Bot is running!", content_type="text/plain")
-    elif path == '/favicon.ico' or path == '/favicon.png':
-        return web.Response(status=204)  # No Content
-    else:
-        return web.Response(status=404, text="Not Found")
+    try:
+        path = request.path
+        
+        if path == '/':
+            return web.Response(text="A-Vision Bot is running!", content_type="text/plain")
+        elif path == '/favicon.ico' or path == '/favicon.png':
+            return web.Response(status=200, content_type="image/x-icon")
+        else:
+            return web.Response(status=404, text="Not Found")
+    except Exception as e:
+        logger.error(f"Error handling GET request {path}: {str(e)}", exc_info=True)
+        return web.Response(status=500, text="Internal Server Error")
 
 # Add routes for GET requests
 app.router.add_get('/', handle_get)
