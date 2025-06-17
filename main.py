@@ -9,7 +9,16 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler
 
-from config import BOT_TOKEN, VERCEL_URL
+print("BOT_TOKEN:", os.getenv("BOT_TOKEN"))
+print("VERCEL_URL:", os.getenv("VERCEL_URL"))
+
+try:
+    from config import BOT_TOKEN, VERCEL_URL
+except Exception as e:
+    import sys
+    print("CONFIG IMPORT ERROR:", e, file=sys.stderr)
+    raise
+
 from handlers.commands import router as commands_router
 from handlers.media import router as media_router
 
