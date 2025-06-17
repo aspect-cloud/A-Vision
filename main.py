@@ -75,12 +75,17 @@ async def handle_get(request: Request) -> Response:
         if path == '/':
             return web.Response(text="A-Vision Bot is running!", content_type="text/plain")
         elif path == '/favicon.ico' or path == '/favicon.png':
-            return web.Response(status=200, content_type="image/x-icon")
+            # Return empty favicon response
+            return web.Response(
+                status=200,
+                content_type="image/x-icon",
+                body=b''
+            )
         else:
             return web.Response(status=404, text="Not Found")
     except Exception as e:
         logger.error(f"Error handling GET request {path}: {str(e)}", exc_info=True)
-        return web.Response(status=500, text="Internal Server Error")
+        raise
 
 # Add routes for GET requests
 app.router.add_get('/', handle_get)
