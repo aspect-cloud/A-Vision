@@ -29,15 +29,15 @@ def index():
 def webhook():
     update_data = request.get_json()
     
-    # Более надежный способ управления циклом событий
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-
-    # Запускаем нашу асинхронную задачу в существующем или новом цикле
-    loop.run_until_complete(process_update(update_data))
+        
+    # КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Создаем официальную задачу (Task)
+    task = loop.create_task(process_update(update_data))
+    loop.run_until_complete(task)
     
     return jsonify(ok=True)
 
